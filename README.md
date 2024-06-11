@@ -15,29 +15,50 @@ The code:
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-contract Functionality {
-    
-    uint256 public value;
+contract Donation {
 
-  
-    function setValue(uint256 _value) public {
-        
-        require(_value > 0, "Value must be greater than zero");
+    uint256 public minimumDonation;
+    uint256 public totalDonations;
+    address public owner;
+    mapping(address => uint256) public donations;
 
-        value = _value;
+    event DonationReceived(address indexed donor, uint256 amount);
+    event MinimumDonationChanged(uint256 newMinimumDonation);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can perform this action");
+        _;
     }
 
-    
-    function checkValue() public view {
-        
-        assert(value != 0);
+    constructor(uint256 _minimumDonation) {
+        require(_minimumDonation > 0, "Minimum donation must be greater than zero");
+        minimumDonation = _minimumDonation;
+        owner = msg.sender;
     }
 
-    
-    function revertExample() public view {
+    function setMinimumDonation(uint256 _minimumDonation) public onlyOwner {
+        require(_minimumDonation > 0, "Minimum donation must be greater than zero");
+        minimumDonation = _minimumDonation;
+        emit MinimumDonationChanged(_minimumDonation);
+    }
 
-        if (value == 1) {
-            revert("Value is 1, operation not allowed");
-        }
+    function donate() public payable {
+        require(msg.value >= minimumDonation, "Donation must be greater than or equal to the minimum donation");
+        require(msg.value != 1, "Donation of 1 wei is not allowed");
+
+        donations[msg.sender] += msg.value;
+        totalDonations += msg.value;
+        emit DonationReceived(msg.sender, msg.value);
+    }
+
+    function checkTotalDonations() public view returns (uint256) {
+        require(totalDonations != 0, "Total donations must not be zero");
+        return totalDonations;
+    }
+
+    function withdrawFunds() public onlyOwner {
+        uint256 amount = address(this).balance;
+        require(amount > 0, "No funds available for withdrawal");
+        payable(owner).transfer(amount);
     }
 }
